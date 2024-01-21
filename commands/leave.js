@@ -1,6 +1,15 @@
+const { SlashCommandBuilder } = require('discord.js');
+
+const name = 'leave';
+
 module.exports = {
-  name: 'leave',
+  name,
+  data: new SlashCommandBuilder().setName(name).setDescription('Ask the bot to leave the voice channel'),
   run: async (client, message) => {
-    client.distube.voices.leave(message)
-  }
-}
+    client.distube.voices.leave(message);
+  },
+  execute: async (interaction) => {
+    const client = interaction.client;
+    client.distube.voices.leave(interaction);
+  },
+};
