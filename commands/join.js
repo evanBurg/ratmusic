@@ -30,5 +30,6 @@ module.exports = {
       });
     }
     client.distube.voices.join(voiceChannel);
+    interaction.reply({ content: `Joining ${voiceChannel.name}` });
   },
 };

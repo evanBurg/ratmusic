@@ -84,7 +84,8 @@ client.on('messageCreate', async (message) => {
     cmd.run(client, message, args);
   } catch (e) {
     console.error(e);
-    message.channel.send(`${client.emotes.error} | Error: \`${e}\``);
+    message.reply({ content: `${client.emotes.error} There was an error trying to execute that command!` });
+    message.reply({ content: Discord.codeBlock(e) });
   }
 });
 
@@ -103,9 +104,11 @@ client.on(Discord.Events.InteractionCreate, async (interaction) => {
   } catch (error) {
     console.error(error);
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+      await interaction.followUp({ content: 'There was an error while executing this command!' });
+      await interaction.followUp({ content: Discord.codeBlock(error) });
     } else {
-      await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+      await interaction.reply({ content: 'There was an error while executing this command!' });
+      await interaction.followUp({ content: Discord.codeBlock(error) });
     }
   }
 });

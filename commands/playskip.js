@@ -28,5 +28,6 @@ module.exports = {
       message: false,
       skip: true,
     });
+    interaction.reply({ content: `Skipping and queuing.` });
   },
 };

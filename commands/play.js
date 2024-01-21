@@ -20,11 +20,14 @@ module.exports = {
   execute: async (interaction) => {
     const client = interaction.client;
     const string = interaction.options.getString('song');
-    if (!string) return interaction.reply({ content: `${client.emotes.error} | Please enter a song url or query to search.`});
-    client.distube.play(interaction.member.voice.channel, string, {
+    if (!string) return interaction.reply({ content: `${client.emotes.error} | Please enter a song url or query to search.` });
+
+    await client.distube.play(interaction.member.voice.channel, string, {
       member: interaction.member,
       textChannel: interaction.channel,
       message: false,
     });
+
+    interaction.reply({ content: `Song queued.` });
   },
 };

@@ -11,5 +11,6 @@ module.exports = {
   execute: async (interaction) => {
     const client = interaction.client;
     client.distube.voices.leave(interaction);
+    interaction.reply({ content: 'Leaving the voice channel.' })
   },
 };

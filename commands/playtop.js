@@ -28,5 +28,6 @@ module.exports = {
       message: false,
       position: 1,
     });
+    interaction.reply({ content: `Queueing this song next.` });
   },
 };
