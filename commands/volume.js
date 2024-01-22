@@ -20,7 +20,7 @@ module.exports = {
     const client = interaction.client;
     const queue = client.distube.getQueue(interaction);
     if (!queue) return interaction.reply({ content: `${client.emotes.error} | There is nothing in the queue right now!` });
-    const volume = parseInt(interaction.options.getString('volume'));
+    const volume = parseInt(interaction.options.getNumber('volume'));
     if (isNaN(volume)) return interaction.reply({ content: `${client.emotes.error} | Please enter a valid number!` });
     queue.setVolume(volume);
     interaction.reply({ content: `${client.emotes.success} | Volume set to \`${volume}\`` });
