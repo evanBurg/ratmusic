@@ -21,9 +21,9 @@ Setup
 
   cp .env.example .env
   nano .env     # fill in DISCORD_TOKEN, IDs, ADMIN_PASSWORD
-  npm install
-  npm run deploy
-  npm start
+  pnpm install
+  pnpm run deploy
+  pnpm start
 
 Files
 

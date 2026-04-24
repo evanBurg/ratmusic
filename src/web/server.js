@@ -124,7 +124,7 @@ app.post('/api/git-pull', async (_req, res) => {
     const pullOut = await runCmd('git', ['-C', REPO_ROOT, 'pull', '--ff-only']);
     let installOut = '';
     try {
-      installOut = await runCmd('bash', ['-lc', `cd ${shellQuote(REPO_ROOT)} && npm install --omit=dev --no-audit --no-fund`]);
+      installOut = await runCmd('bash', ['-lc', `cd ${shellQuote(REPO_ROOT)} && pnpm install --prod=false --frozen-lockfile`]);
     } catch (e) {
       installOut = `npm install warning: ${e.message}`;
     }
