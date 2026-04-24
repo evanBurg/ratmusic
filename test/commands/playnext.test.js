@@ -7,6 +7,8 @@ const fakeMusic = {
   connect: vi.fn().mockResolvedValue(undefined),
   enqueue: vi.fn(function (t) { this.queue.push(t); }),
   enqueueNext: vi.fn(function (t) { this.queue.unshift(t); }),
+  enqueueBatch: vi.fn(function (ts) { for (const t of ts) this.queue.push(t); }),
+  enqueueNextBatch: vi.fn(function (ts) { this.queue.unshift(...ts); }),
   maybeStart: vi.fn().mockResolvedValue(undefined),
 };
 
@@ -20,19 +22,24 @@ vi.mock('../../src/music/resolver.js', async () => {
   return {
     ...actual,
     resolveQuery: vi.fn(async (q, by) => ({
-      title: `Resolved: ${q}`,
-      webpageUrl: `https://yt/${q}`,
-      durationSec: 200,
-      requestedBy: by,
+      tracks: [{
+        title: `Resolved: ${q}`,
+        webpageUrl: `https://yt/${q}`,
+        durationSec: 200,
+        requestedBy: by,
+      }],
+      playlist: null,
     })),
   };
 });
 
-vi.mock('../../src/logger.js', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), fatal: vi.fn() },
-}));
+vi.mock('../../src/logger.js', async () => {
+  const { fakeLoggerModule } = await import('../helpers/fakeLogger.js');
+  return fakeLoggerModule;
+});
 
 const { execute, data } = await import('../../src/commands/playnext.js');
+const { resolveQuery } = await import('../../src/music/resolver.js');
 
 beforeEach(() => {
   fakeMusic.current = null;
@@ -40,6 +47,8 @@ beforeEach(() => {
   fakeMusic.connect.mockClear();
   fakeMusic.enqueue.mockClear();
   fakeMusic.enqueueNext.mockClear();
+  fakeMusic.enqueueBatch.mockClear();
+  fakeMusic.enqueueNextBatch.mockClear();
   fakeMusic.maybeStart.mockClear();
 });
 
@@ -54,8 +63,9 @@ describe('/playnext command', () => {
   it('asks for a query when missing/empty', async () => {
     const i = makeChatInteraction({ options: {} });
     await execute(i);
-    expect(i.reply).toHaveBeenCalledOnce();
-    expect(i.reply.mock.calls[0][0].content).toMatch(/supply a query/i);
+    expect(i.deferReply).toHaveBeenCalledOnce();
+    expect(i.editReply).toHaveBeenCalledOnce();
+    expect(i.editReply.mock.calls[0][0].content).toMatch(/supply a query/i);
   });
 
   it('uses enqueueNext (front of queue), not enqueue', async () => {
@@ -77,5 +87,26 @@ describe('/playnext command', () => {
     await execute(i);
     expect(fakeMusic.enqueueNext).toHaveBeenCalledOnce();
     expect(i.editReply.mock.calls[0][0].content).toMatch(/Now playing/);
+  });
+
+  it('with a YouTube playlist URL: uses enqueueNextBatch and preserves track order at the front', async () => {
+    fakeMusic.current = { title: 'Already' };
+    fakeMusic.queue = [{ title: 'existing' }];
+    resolveQuery.mockResolvedValueOnce({
+      tracks: [
+        { title: 'P1', webpageUrl: '1', durationSec: 1, requestedBy: 'u' },
+        { title: 'P2', webpageUrl: '2', durationSec: 1, requestedBy: 'u' },
+        { title: 'P3', webpageUrl: '3', durationSec: 1, requestedBy: 'u' },
+      ],
+      playlist: { title: 'Mixtape', totalEntries: 3, truncated: false },
+    });
+    const i = makeChatInteraction({ options: { query: 'https://www.youtube.com/playlist?list=PLnext' } });
+    await execute(i);
+    expect(fakeMusic.enqueueNextBatch).toHaveBeenCalledOnce();
+    expect(fakeMusic.enqueueNext).not.toHaveBeenCalled();
+    expect(fakeMusic.queue.map((t) => t.title)).toEqual(['P1', 'P2', 'P3', 'existing']);
+    const msg = i.editReply.mock.calls[0][0].content;
+    expect(msg).toMatch(/Queued playlist/);
+    expect(msg).toMatch(/Mixtape/);
   });
 });

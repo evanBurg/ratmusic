@@ -1,12 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../../src/logger.js', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn(), debug: vi.fn() },
-}));
+vi.mock('../../src/logger.js', async () => {
+  const { fakeLoggerModule } = await import('../helpers/fakeLogger.js');
+  return fakeLoggerModule;
+});
 
 const {
   isUrl,
   isSpotifyUrl,
+  isYouTubePlaylistUrl,
   rewriteYouTubeMusic,
   buildYtdlpTarget,
   formatDuration,
@@ -72,17 +74,58 @@ describe('rewriteYouTubeMusic', () => {
   });
 });
 
+describe('isYouTubePlaylistUrl', () => {
+  it('matches pure /playlist?list= URLs', () => {
+    expect(isYouTubePlaylistUrl('https://www.youtube.com/playlist?list=PLabc123')).toBe(true);
+    expect(isYouTubePlaylistUrl('https://music.youtube.com/playlist?list=PLabc123')).toBe(true);
+  });
+  it('matches watch?v=...&list=... URLs (treat as playlist starting from that video)', () => {
+    expect(isYouTubePlaylistUrl('https://www.youtube.com/watch?v=abc&list=PLxyz')).toBe(true);
+    expect(isYouTubePlaylistUrl('https://youtu.be/abc?list=PLxyz')).toBe(true);
+  });
+  it('does NOT match plain video URLs without a list= parameter', () => {
+    expect(isYouTubePlaylistUrl('https://www.youtube.com/watch?v=abc')).toBe(false);
+    expect(isYouTubePlaylistUrl('https://youtu.be/abc')).toBe(false);
+  });
+  it('does NOT match auto-generated mix/radio playlists (RD/UU/LM/FL prefixes are infinite)', () => {
+    expect(isYouTubePlaylistUrl('https://www.youtube.com/watch?v=abc&list=RDabc')).toBe(false);
+    expect(isYouTubePlaylistUrl('https://www.youtube.com/watch?v=abc&list=UUxyz')).toBe(false);
+  });
+  it('does NOT match non-YouTube hosts, even with list=', () => {
+    expect(isYouTubePlaylistUrl('https://soundcloud.com/x?list=PLabc')).toBe(false);
+    expect(isYouTubePlaylistUrl('https://example.com/playlist?list=PLabc')).toBe(false);
+  });
+  it('does NOT match keyword input', () => {
+    expect(isYouTubePlaylistUrl('not a url')).toBe(false);
+    expect(isYouTubePlaylistUrl('')).toBe(false);
+    expect(isYouTubePlaylistUrl(null)).toBe(false);
+  });
+});
+
 describe('buildYtdlpTarget', () => {
   it('treats keyword input as ytsearch1:', async () => {
     const r = await buildYtdlpTarget('despacito');
     expect(r.target).toBe('ytsearch1:despacito');
     expect(r.displayQuery).toBe('despacito');
+    expect(r.isPlaylist).toBe(false);
   });
 
   it('passes plain YouTube URLs through', async () => {
     const r = await buildYtdlpTarget('https://www.youtube.com/watch?v=abc');
     expect(r.target).toBe('https://www.youtube.com/watch?v=abc');
     expect(r.displayQuery).toBe('https://www.youtube.com/watch?v=abc');
+    expect(r.isPlaylist).toBe(false);
+  });
+
+  it('flags playlist URLs with isPlaylist=true', async () => {
+    const r = await buildYtdlpTarget('https://www.youtube.com/playlist?list=PLabc');
+    expect(r.target).toBe('https://www.youtube.com/playlist?list=PLabc');
+    expect(r.isPlaylist).toBe(true);
+  });
+
+  it('flags watch?v=...&list=... URLs as playlists', async () => {
+    const r = await buildYtdlpTarget('https://www.youtube.com/watch?v=xxx&list=PLabc');
+    expect(r.isPlaylist).toBe(true);
   });
 
   it('rewrites YouTube Music URLs to www', async () => {

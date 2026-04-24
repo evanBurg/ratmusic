@@ -1,8 +1,9 @@
 import { Client, GatewayIntentBits, Events, MessageFlags } from 'discord.js';
+import { generateDependencyReport } from '@discordjs/voice';
 import { config, validateBotConfig } from './config.js';
 
 validateBotConfig();
-import { logger } from './logger.js';
+import { logger, nextRequestId } from './logger.js';
 import { shutdownAll } from './music/manager.js';
 import { handleButton } from './interactions/buttons.js';
 
@@ -22,6 +23,11 @@ const commands = new Map([
   [remove.data.name, remove],
 ]);
 
+logger.info(
+  { report: generateDependencyReport().split('\n') },
+  'voice: @discordjs/voice dependency report',
+);
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -30,32 +36,61 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, (c) => {
-  logger.info({ tag: c.user.tag, id: c.user.id }, 'Discord client ready');
+  logger.info(
+    {
+      tag: c.user.tag,
+      id: c.user.id,
+      guildCount: c.guilds.cache.size,
+    },
+    'Discord client ready',
+  );
 });
 
+client.on(Events.Error, (e) =>
+  logger.error({ err: e?.message, stack: e?.stack }, 'discord client error'),
+);
+client.on(Events.Warn, (msg) => logger.warn({ msg }, 'discord client warn'));
+if (process.env.DISCORD_DEBUG === '1') {
+  client.on(Events.Debug, (msg) => logger.debug({ msg }, 'discord client debug'));
+}
+
 client.on(Events.InteractionCreate, async (interaction) => {
+  const reqLog = logger.child({
+    interactionId: interaction.id,
+    interactionType: interaction.type,
+    commandName: interaction.commandName,
+    customId: interaction.customId,
+    user: interaction.user?.tag,
+    guildId: interaction.guildId,
+    channelId: interaction.channelId,
+  });
+  reqLog.debug('interaction: received');
   try {
     if (interaction.isChatInputCommand()) {
-      // Channel restriction: only respond inside the configured #bot-commands channel
       if (interaction.channelId !== config.botCommandsChannelId) {
+        reqLog.warn(
+          { expected: config.botCommandsChannelId },
+          'interaction: wrong channel, rejecting',
+        );
         return interaction.reply({
-          content: `Please use this command in <#${config.botCommandsChannelId}>.`,
+          content: `🚫 Please use this command in <#${config.botCommandsChannelId}>.`,
           flags: MessageFlags.Ephemeral,
         });
       }
       const cmd = commands.get(interaction.commandName);
       if (!cmd) {
-        return interaction.reply({ content: 'Unknown command.', flags: MessageFlags.Ephemeral });
+        reqLog.warn('interaction: unknown command');
+        return interaction.reply({ content: '❓ Unknown command.', flags: MessageFlags.Ephemeral });
       }
       await cmd.execute(interaction);
       return;
     }
 
     if (interaction.isButton()) {
-      // Same channel restriction for buttons
       if (interaction.channelId !== config.botCommandsChannelId) {
+        reqLog.warn('interaction: button in wrong channel');
         return interaction.reply({
-          content: `Please use bot controls in <#${config.botCommandsChannelId}>.`,
+          content: `🚫 Please use bot controls in <#${config.botCommandsChannelId}>.`,
           flags: MessageFlags.Ephemeral,
         });
       }
@@ -63,9 +98,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
   } catch (err) {
-    logger.error({ err: err?.message, stack: err?.stack }, 'interaction handler crashed');
+    reqLog.error(
+      { err: err?.message, stack: err?.stack },
+      'interaction handler crashed',
+    );
     if (interaction.isRepliable()) {
-      const payload = { content: `Internal error: ${err?.message || 'unknown'}`, flags: MessageFlags.Ephemeral };
+      const payload = { content: `💥 Internal error: ${err?.message || 'unknown'}`, flags: MessageFlags.Ephemeral };
       try {
         if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
         else await interaction.reply(payload);
@@ -84,6 +122,7 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('unhandledRejection', (e) => logger.error({ err: e?.message, stack: e?.stack }, 'unhandled rejection'));
 process.on('uncaughtException', (e) => logger.error({ err: e?.message, stack: e?.stack }, 'uncaught exception'));
 
+logger.info({ rid: nextRequestId() }, 'logging in to Discord');
 client.login(config.token).catch((err) => {
   logger.fatal({ err: err.message }, 'Discord login failed');
   process.exit(1);

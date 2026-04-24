@@ -10,6 +10,8 @@ export async function execute(interaction) {
   const had = music.current || music.queue.length > 0;
   music.stopAndLeave();
   await interaction.reply({
-    content: had ? 'Stopped, queue cleared, left the voice channel.' : 'Nothing to stop. Left voice channel if connected.',
+    content: had
+      ? '🛑 Stopped, queue cleared, 👋 left the voice channel.'
+      : '🤷 Nothing to stop. 👋 Left voice channel if connected.',
   });
 }

@@ -15,7 +15,7 @@ export async function execute(interaction) {
   const music = getMusic(interaction.guildId);
 
   if (music.queue.length === 0) {
-    return interaction.reply({ content: 'The queue is empty.', flags: MessageFlags.Ephemeral });
+    return interaction.reply({ content: '🤷 The queue is empty.', flags: MessageFlags.Ephemeral });
   }
 
   const rangeMatch = sel.match(/^(\d+)\s*-\s*(\d+)$/);
@@ -25,9 +25,9 @@ export async function execute(interaction) {
     const idx = parseInt(singleMatch[1], 10);
     const removed = music.removeIndex(idx);
     if (!removed) {
-      return interaction.reply({ content: `No item at position **${idx}** (queue size: ${music.queue.length + 1}).`, flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: `⚠️ No item at position **${idx}** (queue size: ${music.queue.length + 1}).`, flags: MessageFlags.Ephemeral });
     }
-    return interaction.reply({ content: `Removed **#${idx}**: ${escapeMd(removed.title)}` });
+    return interaction.reply({ content: `🗑️ Removed **#${idx}**: ${escapeMd(removed.title)}` });
   }
 
   if (rangeMatch) {
@@ -36,15 +36,15 @@ export async function execute(interaction) {
     if (a > b) [a, b] = [b, a];
     const removed = music.removeRange(a, b);
     if (removed.length === 0) {
-      return interaction.reply({ content: `Nothing in range **${a}-${b}** to remove.`, flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: `⚠️ Nothing in range **${a}-${b}** to remove.`, flags: MessageFlags.Ephemeral });
     }
     return interaction.reply({
-      content: `Removed **${removed.length}** item(s) from positions **${a}-${b}**.`,
+      content: `🗑️ Removed **${removed.length}** item(s) from positions **${a}-${b}**.`,
     });
   }
 
   return interaction.reply({
-    content: 'Selector must be a single number (e.g. `3`) or a range (e.g. `1-7`).',
+    content: '⚠️ Selector must be a single number (e.g. `3`) or a range (e.g. `1-7`).',
     flags: MessageFlags.Ephemeral,
   });
 }

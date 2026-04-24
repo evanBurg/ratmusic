@@ -10,7 +10,7 @@ export async function handleButton(interaction) {
 
   if (action === 'skip') {
     if (!music.current && music.queue.length === 0) {
-      return interaction.reply({ content: 'Nothing is playing.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: '🤷 Nothing is playing.', flags: MessageFlags.Ephemeral });
     }
     const skipped = music.skip();
     await interaction.update({
@@ -18,7 +18,7 @@ export async function handleButton(interaction) {
       components: [queueButtons(!music.current && music.queue.length === 0)],
     });
     if (skipped && interaction.channel) {
-      interaction.channel.send({ content: `<@${interaction.user.id}> skipped **${escapeMd(skipped.title)}**.` }).catch(() => {});
+      interaction.channel.send({ content: `⏭️ <@${interaction.user.id}> skipped **${escapeMd(skipped.title)}**.` }).catch(() => {});
     }
     return true;
   }
@@ -30,12 +30,12 @@ export async function handleButton(interaction) {
       components: [queueButtons(true)],
     });
     if (interaction.channel) {
-      interaction.channel.send({ content: `<@${interaction.user.id}> stopped playback and cleared the queue.` }).catch(() => {});
+      interaction.channel.send({ content: `🛑 <@${interaction.user.id}> stopped playback and cleared the queue.` }).catch(() => {});
     }
     return true;
   }
 
-  return interaction.reply({ content: `Unknown action: ${action}`, flags: MessageFlags.Ephemeral });
+  return interaction.reply({ content: `❓ Unknown action: ${action}`, flags: MessageFlags.Ephemeral });
 }
 
 function escapeMd(s) {
