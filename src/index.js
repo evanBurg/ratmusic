@@ -67,16 +67,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   reqLog.debug('interaction: received');
   try {
     if (interaction.isChatInputCommand()) {
-      if (interaction.channelId !== config.botCommandsChannelId) {
-        reqLog.warn(
-          { expected: config.botCommandsChannelId },
-          'interaction: wrong channel, rejecting',
-        );
-        return interaction.reply({
-          content: `🚫 Please use this command in <#${config.botCommandsChannelId}>.`,
-          flags: MessageFlags.Ephemeral,
-        });
-      }
       const cmd = commands.get(interaction.commandName);
       if (!cmd) {
         reqLog.warn('interaction: unknown command');
@@ -87,13 +77,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton()) {
-      if (interaction.channelId !== config.botCommandsChannelId) {
-        reqLog.warn('interaction: button in wrong channel');
-        return interaction.reply({
-          content: `🚫 Please use bot controls in <#${config.botCommandsChannelId}>.`,
-          flags: MessageFlags.Ephemeral,
-        });
-      }
       await handleButton(interaction);
       return;
     }

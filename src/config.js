@@ -8,7 +8,6 @@ export const config = {
   token: process.env.DISCORD_TOKEN,
   clientId: process.env.DISCORD_CLIENT_ID,
   guildId: process.env.DISCORD_GUILD_ID,
-  botCommandsChannelId: process.env.BOT_COMMANDS_CHANNEL_ID,
   ytdlpPath: process.env.YTDLP_PATH || 'yt-dlp',
   logLevel: process.env.LOG_LEVEL || 'info',
   admin: {
@@ -22,7 +21,7 @@ export const config = {
 };
 
 export function validateBotConfig() {
-  const required = ['token', 'clientId', 'guildId', 'botCommandsChannelId'];
+  const required = ['token', 'clientId', 'guildId'];
   const missing = required.filter((k) => isUnset(config[k]));
   if (missing.length) {
     throw new Error(
