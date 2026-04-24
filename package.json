@@ -1,9 +1,13 @@
 {
-  "name": "discord-music-bot",
+  "name": "ratmusic",
   "version": "1.0.0",
-  "description": "Personal Discord music bot with slash commands, yt-dlp, and admin web panel",
+  "description": "Personal Discord music bot (ratmusic) with slash commands, yt-dlp, and admin web panel",
   "type": "module",
   "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/evanBurg/ratmusic.git"
+  },
   "scripts": {
     "start": "node src/index.js",
     "admin": "node src/web/server.js",

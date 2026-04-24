@@ -1,14 +1,15 @@
-Discord Music Bot
+ratmusic
 
 Personal Discord music bot. Slash commands, yt-dlp resolution (YouTube, YouTube Music, Spotify, SoundCloud, keyword search), per-guild queue, and a LAN-accessible admin web panel.
 
 Commands
 
-- /play QUERY  - YouTube, YouTube Music, Spotify, SoundCloud URLs, or keyword search (first result)
-- /skip        - skip the current song
-- /queue       - show queue with Skip/Stop buttons
-- /stop        - clear queue, stop, leave voice channel
-- /remove SEL  - remove single (e.g. 3) or range (e.g. 1-7 inclusive)
+- /play QUERY      - add to end of queue (YouTube, YouTube Music, Spotify, SoundCloud URLs, or keyword search)
+- /playnext QUERY  - insert at front of queue (plays right after current song)
+- /skip            - skip the current song
+- /queue           - show queue with Skip/Stop buttons
+- /stop            - clear queue, stop, leave voice channel
+- /remove SEL      - remove single (e.g. 3) or range (e.g. 1-7 inclusive)
 
 All commands only work in the channel ID set in BOT_COMMANDS_CHANNEL_ID.
 
@@ -25,6 +26,11 @@ Setup
   pnpm run deploy
   pnpm start
 
+Tests
+
+  pnpm test          # run the Vitest suite once
+  pnpm test:watch    # watch mode
+
 Files
 
 - src/index.js              bot entrypoint
@@ -33,3 +39,4 @@ Files
 - src/music/                queue, player, URL resolver
 - src/web/server.js         admin web panel
 - systemd/                  user-mode systemd units
+- test/                     Vitest test suite
