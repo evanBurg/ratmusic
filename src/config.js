@@ -16,8 +16,8 @@ export const config = {
     user: process.env.ADMIN_USER || 'admin',
     password: process.env.ADMIN_PASSWORD || 'change-me',
     bind: process.env.ADMIN_BIND || '0.0.0.0',
-    botService: process.env.BOT_SERVICE || 'discord-music-bot.service',
-    adminService: process.env.ADMIN_SERVICE || 'discord-music-bot-admin.service',
+    botService: process.env.BOT_SERVICE || 'ratmusic.service',
+    adminService: process.env.ADMIN_SERVICE || 'ratmusic-admin.service',
   },
 };
 

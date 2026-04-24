@@ -1,12 +1,12 @@
 [Unit]
-Description=Discord Music Bot - Admin Web Panel
+Description=ratmusic Admin Web Panel
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/discord-music-bot
-EnvironmentFile=%h/discord-music-bot/.env
+WorkingDirectory=%h/ratmusic
+EnvironmentFile=%h/ratmusic/.env
 Environment=PATH=%h/.local/bin:%h/.nvm/versions/node/v20.20.2/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/.nvm/versions/node/v20.20.2/bin/node src/web/server.js
 Restart=on-failure
