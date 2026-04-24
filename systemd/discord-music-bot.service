@@ -1,0 +1,17 @@
+[Unit]
+Description=Discord Music Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/discord-music-bot
+EnvironmentFile=%h/discord-music-bot/.env
+ExecStart=/bin/bash -lc 'exec node src/index.js'
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

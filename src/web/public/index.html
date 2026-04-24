@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Music Bot Admin</title>
+<style>
+  :root {
+    --bg: #0e1014;
+    --panel: #161a22;
+    --panel-2: #1d2330;
+    --border: #2a3142;
+    --text: #e6e8ed;
+    --muted: #8b95a8;
+    --primary: #5865f2;
+    --green: #2dd4bf;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  .commit { color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+  main { display: grid; grid-template-columns: 360px 1fr; gap: 16px; padding: 16px; height: calc(100vh - 56px); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; min-height: 0; }
+  .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .pill { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--border); }
+  .pill.active { background: rgba(45,212,191,0.12); border-color: var(--green); color: var(--green); }
+  .pill.failed, .pill.dead { background: rgba(239,68,68,0.12); border-color: var(--red); color: var(--red); }
+  .pill.activating, .pill.deactivating { background: rgba(245,158,11,0.12); border-color: var(--yellow); color: var(--yellow); }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: 13px; margin-bottom: 12px; }
+  .kv .k { color: var(--muted); }
+  button { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 12px; font-size: 13px; font-weight: 500; cursor: pointer; transition: 80ms; }
+  button:hover { background: #232a3b; border-color: #3a4358; }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--primary); border-color: var(--primary); }
+  button.primary:hover { background: #4752c4; }
+  button.danger { background: var(--red); border-color: var(--red); }
+  button.danger:hover { background: #c63838; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  select { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+  .logwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .logbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .logbar label { color: var(--muted); font-size: 12px; }
+  pre.log { flex: 1; min-height: 200px; margin: 0; padding: 12px; background: #0a0c10; border: 1px solid var(--border); border-radius: 8px; overflow: auto; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
+  .log-line { color: #cbd0db; }
+  .log-line.warn { color: #fbbf24; }
+  .log-line.err { color: #fb7185; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--panel); border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px; max-width: 380px; opacity: 0; transition: opacity 200ms; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.ok { border-color: var(--green); }
+  .toast.err { border-color: var(--red); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Discord Music Bot</h1>
+  <span id="commit" class="commit"></span>
+  <span id="repo" class="commit"></span>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Bot Service</h2>
+    <div class="kv">
+      <div class="k">Service</div><div id="bot-name">—</div>
+      <div class="k">State</div><div><span id="bot-state" class="pill">—</span></div>
+      <div class="k">PID</div><div id="bot-pid">—</div>
+      <div class="k">Started</div><div id="bot-started">—</div>
+    </div>
+    <div class="row">
+      <button class="primary" data-action="restart" data-service="bot">Restart Bot</button>
+      <button class="danger" data-action="stop" data-service="bot">Stop Bot</button>
+      <button data-action="start" data-service="bot">Start Bot</button>
+    </div>
+
+    <h2 style="margin-top:18px">Deploy</h2>
+    <div class="row">
+      <button class="primary" id="git-pull">Git Pull &amp; Restart</button>
+    </div>
+
+    <h2 style="margin-top:18px">Admin Panel Service</h2>
+    <div class="kv">
+      <div class="k">Service</div><div id="admin-name">—</div>
+      <div class="k">State</div><div><span id="admin-state" class="pill">—</span></div>
+      <div class="k">PID</div><div id="admin-pid">—</div>
+    </div>
+    <div class="row">
+      <button data-action="restart" data-service="admin">Restart Admin</button>
+    </div>
+  </section>
+
+  <section class="panel logwrap">
+    <h2>Logs</h2>
+    <div class="logbar">
+      <label for="log-service">Service</label>
+      <select id="log-service">
+        <option value="bot" selected>Bot</option>
+        <option value="admin">Admin Panel</option>
+      </select>
+      <label for="log-lines">Lines</label>
+      <select id="log-lines">
+        <option>200</option><option selected>500</option><option>1000</option><option>2000</option>
+      </select>
+      <button id="log-refresh">Refresh</button>
+      <button id="log-stream-toggle">Start Live Tail</button>
+      <button id="log-clear">Clear View</button>
+    </div>
+    <pre id="log" class="log"></pre>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const log = $('log');
+let evtSource = null;
+
+function toast(msg, kind = 'ok') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + kind;
+  clearTimeout(toast._h);
+  toast._h = setTimeout(() => { t.className = 'toast'; }, 3500);
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+
+function statePill(el, state) {
+  el.textContent = state || '—';
+  el.className = 'pill ' + (state || '');
+}
+
+async function loadStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    $('bot-name').textContent = data.bot.name;
+    statePill($('bot-state'), data.bot.ActiveState);
+    $('bot-pid').textContent = data.bot.MainPID && data.bot.MainPID !== '0' ? data.bot.MainPID : '—';
+    $('bot-started').textContent = fmtTime(data.bot.ExecMainStartTimestamp);
+
+    $('admin-name').textContent = data.admin.name;
+    statePill($('admin-state'), data.admin.ActiveState);
+    $('admin-pid').textContent = data.admin.MainPID && data.admin.MainPID !== '0' ? data.admin.MainPID : '—';
+
+    if (data.commit) $('commit').textContent = data.commit;
+    if (data.repo) $('repo').textContent = data.repo;
+  } catch (e) {
+    toast('Status load failed: ' + e.message, 'err');
+  }
+}
+
+async function loadLogs() {
+  const service = $('log-service').value;
+  const lines = $('log-lines').value;
+  log.textContent = 'Loading…';
+  try {
+    const res = await fetch(`/api/logs?service=${service}&lines=${lines}`);
+    const text = await res.text();
+    log.textContent = text || '(no log output)';
+    log.scrollTop = log.scrollHeight;
+  } catch (e) {
+    log.textContent = 'Error: ' + e.message;
+  }
+}
+
+function startStream() {
+  stopStream();
+  const service = $('log-service').value;
+  evtSource = new EventSource(`/api/logs/stream?service=${service}`);
+  evtSource.onmessage = (e) => {
+    log.textContent += e.data + '\n';
+    if (log.scrollTop + log.clientHeight + 50 >= log.scrollHeight) {
+      log.scrollTop = log.scrollHeight;
+    }
+  };
+  evtSource.onerror = () => { toast('Live tail disconnected', 'err'); stopStream(); };
+  $('log-stream-toggle').textContent = 'Stop Live Tail';
+  $('log-stream-toggle').classList.add('danger');
+}
+
+function stopStream() {
+  if (evtSource) { evtSource.close(); evtSource = null; }
+  $('log-stream-toggle').textContent = 'Start Live Tail';
+  $('log-stream-toggle').classList.remove('danger');
+}
+
+async function action(name, service) {
+  const btn = event.target;
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/${name}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service }),
+    });
+    const data = await res.json();
+    if (data.ok) toast(`${name} ${service} succeeded`);
+    else toast(`${name} failed: ${data.error}`, 'err');
+  } catch (e) {
+    toast(`${name} error: ${e.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+    setTimeout(loadStatus, 500);
+  }
+}
+
+document.querySelectorAll('button[data-action]').forEach((b) => {
+  b.addEventListener('click', () => action(b.dataset.action, b.dataset.service));
+});
+$('git-pull').addEventListener('click', async () => {
+  const btn = $('git-pull');
+  btn.disabled = true; btn.textContent = 'Pulling…';
+  try {
+    const res = await fetch('/api/git-pull', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      toast('Git pull + restart complete');
+      log.textContent += '\n=== git pull ===\n' + data.pull + '\n=== npm install ===\n' + data.install + '\n=== restart ===\n' + data.restart + '\n';
+      log.scrollTop = log.scrollHeight;
+    } else {
+      toast('Git pull failed: ' + data.error, 'err');
+    }
+  } catch (e) {
+    toast('Git pull error: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Git Pull & Restart';
+    setTimeout(loadStatus, 500);
+  }
+});
+$('log-refresh').addEventListener('click', loadLogs);
+$('log-clear').addEventListener('click', () => { log.textContent = ''; });
+$('log-service').addEventListener('change', () => { if (evtSource) startStream(); else loadLogs(); });
+$('log-stream-toggle').addEventListener('click', () => { if (evtSource) stopStream(); else startStream(); });
+
+loadStatus();
+loadLogs();
+setInterval(loadStatus, 5000);
+</script>
+</body>
+</html>
