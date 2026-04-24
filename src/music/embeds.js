@@ -6,26 +6,28 @@ export function queueButtons(disabled = false) {
     new ButtonBuilder()
       .setCustomId('music:skip')
       .setLabel('Skip')
+      .setEmoji('⏭️')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(disabled),
     new ButtonBuilder()
       .setCustomId('music:stop')
       .setLabel('Stop')
+      .setEmoji('🛑')
       .setStyle(ButtonStyle.Danger)
       .setDisabled(disabled),
   );
 }
 
 export function queueEmbed(music) {
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle('Music Queue');
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle('🎵 Music Queue');
 
   if (music.current) {
     embed.addFields({
-      name: 'Now Playing',
-      value: `**${truncate(music.current.title, 200)}** \`[${formatDuration(music.current.durationSec)}]\`\nrequested by <@${music.current.requestedBy}>`,
+      name: '▶️ Now Playing',
+      value: `**${truncate(music.current.title, 200)}** \`[${formatDuration(music.current.durationSec)}]\`\n👤 requested by <@${music.current.requestedBy}>`,
     });
   } else {
-    embed.setDescription('Nothing is playing right now.');
+    embed.setDescription('💤 Nothing is playing right now.');
   }
 
   if (music.queue.length > 0) {
@@ -37,14 +39,14 @@ export function queueEmbed(music) {
     if (music.queue.length > 25) {
       value += `\n…and **${music.queue.length - 25}** more.`;
     }
-    embed.addFields({ name: `Up Next (${music.queue.length})`, value });
+    embed.addFields({ name: `⏭️ Up Next (${music.queue.length})`, value });
 
     const totalSec = music.queue.reduce((a, t) => a + (t.durationSec || 0), 0);
     if (totalSec > 0) {
-      embed.setFooter({ text: `Total queue length: ${formatDuration(totalSec)}` });
+      embed.setFooter({ text: `⏱️ Total queue length: ${formatDuration(totalSec)}` });
     }
   } else if (music.current) {
-    embed.addFields({ name: 'Up Next', value: '_(empty)_' });
+    embed.addFields({ name: '⏭️ Up Next', value: '_(empty)_' });
   }
 
   return embed;

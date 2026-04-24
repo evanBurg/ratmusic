@@ -8,11 +8,11 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   const music = getMusic(interaction.guildId);
   if (!music.current && music.queue.length === 0) {
-    return interaction.reply({ content: 'Nothing is playing.', flags: MessageFlags.Ephemeral });
+    return interaction.reply({ content: '🤷 Nothing is playing.', flags: MessageFlags.Ephemeral });
   }
   const skipped = music.skip();
   await interaction.reply({
-    content: skipped ? `Skipped **${escapeMd(skipped.title)}**.` : 'Skipped.',
+    content: skipped ? `⏭️ Skipped **${escapeMd(skipped.title)}**.` : '⏭️ Skipped.',
   });
 }
 
