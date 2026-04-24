@@ -3,3 +3,7 @@ node_modules/
 *.log
 logs/
 .DS_Store
+
+# Local agent transcripts and handoff notes — may contain credentials/IPs
+transcript*.jsonl
+HANDOFF.md
