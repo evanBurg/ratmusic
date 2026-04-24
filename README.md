@@ -11,7 +11,10 @@ Commands
 - /stop            - clear queue, stop, leave voice channel
 - /remove SEL      - remove single (e.g. 3) or range (e.g. 1-7 inclusive)
 
-All commands only work in the channel ID set in BOT_COMMANDS_CHANNEL_ID.
+The bot listens in any channel where it can see slash commands. Restrict where it
+runs by editing the command's permissions in **Server Settings → Integrations →
+ratmusic** (per-channel allow/deny) or by removing the bot's "Use Application
+Commands" permission from channels where you don't want it.
 
 Admin Panel
 
