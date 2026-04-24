@@ -89,6 +89,10 @@ class GuildMusic {
     this.queue.push(track);
   }
 
+  enqueueNext(track) {
+    this.queue.unshift(track);
+  }
+
   /** Start playing if idle. Safe to call repeatedly. */
   async maybeStart() {
     if (!this.player) return;

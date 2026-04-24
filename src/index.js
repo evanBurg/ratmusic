@@ -7,6 +7,7 @@ import { shutdownAll } from './music/manager.js';
 import { handleButton } from './interactions/buttons.js';
 
 import * as play from './commands/play.js';
+import * as playnext from './commands/playnext.js';
 import * as skip from './commands/skip.js';
 import * as queueCmd from './commands/queue.js';
 import * as stop from './commands/stop.js';
@@ -14,6 +15,7 @@ import * as remove from './commands/remove.js';
 
 const commands = new Map([
   [play.data.name, play],
+  [playnext.data.name, playnext],
   [skip.data.name, skip],
   [queueCmd.data.name, queueCmd],
   [stop.data.name, stop],

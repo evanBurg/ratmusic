@@ -4,7 +4,11 @@ import { logger } from '../logger.js';
 
 const URL_RE = /^https?:\/\//i;
 
-function rewriteYouTubeMusic(url) {
+export function isUrl(s) {
+  return typeof s === 'string' && URL_RE.test(s);
+}
+
+export function rewriteYouTubeMusic(url) {
   try {
     const u = new URL(url);
     if (u.hostname === 'music.youtube.com') {
@@ -15,10 +19,13 @@ function rewriteYouTubeMusic(url) {
   return url;
 }
 
-async function spotifyToSearchQuery(url) {
-  // Spotify oEmbed returns { title: "Song Name - Artist" } with no auth required.
+export function isSpotifyUrl(s) {
+  return typeof s === 'string' && /^https?:\/\/[^\s]*spotify\.com/i.test(s);
+}
+
+export async function spotifyToSearchQuery(url, fetchImpl = globalThis.fetch) {
   try {
-    const res = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`);
+    const res = await fetchImpl(`https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`);
     if (!res.ok) throw new Error(`spotify oembed status ${res.status}`);
     const data = await res.json();
     if (data && data.title) return data.title;
@@ -26,6 +33,30 @@ async function spotifyToSearchQuery(url) {
     logger.warn({ err: e?.message, url }, 'spotify oembed failed');
   }
   return null;
+}
+
+/**
+ * Decide what to feed to yt-dlp based on the user's raw query.
+ * Returns { target, displayQuery }.
+ * - URLs: passed through (with YouTube Music host rewrite)
+ * - Spotify URLs: resolved to a YouTube search query via oEmbed
+ * - Anything else: treated as keyword search via ytsearch1:
+ */
+export async function buildYtdlpTarget(rawQuery, { fetchImpl } = {}) {
+  const query = String(rawQuery).trim();
+  if (!query) throw new Error('empty query');
+
+  if (isUrl(query)) {
+    if (isSpotifyUrl(query)) {
+      const title = await spotifyToSearchQuery(query, fetchImpl);
+      if (title) return { target: `ytsearch1:${title}`, displayQuery: `${title} (from Spotify)` };
+      return { target: `ytsearch1:${query}`, displayQuery: query };
+    }
+    const rewritten = rewriteYouTubeMusic(query);
+    return { target: rewritten, displayQuery: query };
+  }
+
+  return { target: `ytsearch1:${query}`, displayQuery: query };
 }
 
 function runYtdlpJson(args) {
@@ -39,7 +70,6 @@ function runYtdlpJson(args) {
     proc.on('close', (code) => {
       if (code !== 0) return reject(new Error(`yt-dlp exit ${code}: ${err.trim()}`));
       try {
-        // For ytsearch1 yt-dlp returns one JSON line; for plain URL it returns one too.
         const firstLine = out.trim().split('\n').filter(Boolean)[0];
         if (!firstLine) return reject(new Error('yt-dlp returned no data'));
         resolve(JSON.parse(firstLine));
@@ -50,30 +80,8 @@ function runYtdlpJson(args) {
   });
 }
 
-/**
- * Resolve a user query into a playable track descriptor.
- * Returns: { title, url, webpageUrl, durationSec, thumbnail, requestedBy, displayQuery }
- */
 export async function resolveQuery(rawQuery, requestedBy) {
-  let query = rawQuery.trim();
-  let displayQuery = query;
-  let target;
-
-  if (URL_RE.test(query)) {
-    if (/spotify\.com/i.test(query)) {
-      const title = await spotifyToSearchQuery(query);
-      if (title) {
-        target = `ytsearch1:${title}`;
-        displayQuery = `${title} (from Spotify)`;
-      } else {
-        target = `ytsearch1:${query}`;
-      }
-    } else {
-      target = rewriteYouTubeMusic(query);
-    }
-  } else {
-    target = `ytsearch1:${query}`;
-  }
+  const { target, displayQuery } = await buildYtdlpTarget(rawQuery);
 
   const args = [
     '-j',
@@ -96,7 +104,6 @@ export async function resolveQuery(rawQuery, requestedBy) {
   };
 }
 
-/** Spawn a yt-dlp process that streams the best audio to stdout. */
 export function spawnAudioStream(webpageUrl) {
   const args = [
     '-o', '-',
