@@ -1,18 +1,14 @@
 import 'dotenv/config';
 
-function required(name) {
-  const v = process.env[name];
-  if (!v || v.startsWith('your-')) {
-    throw new Error(`Missing or unset env var: ${name}. Edit .env and set it.`);
-  }
-  return v;
+function isUnset(v) {
+  return !v || v === '' || /^your-/i.test(v);
 }
 
 export const config = {
-  token: required('DISCORD_TOKEN'),
-  clientId: required('DISCORD_CLIENT_ID'),
-  guildId: required('DISCORD_GUILD_ID'),
-  botCommandsChannelId: required('BOT_COMMANDS_CHANNEL_ID'),
+  token: process.env.DISCORD_TOKEN,
+  clientId: process.env.DISCORD_CLIENT_ID,
+  guildId: process.env.DISCORD_GUILD_ID,
+  botCommandsChannelId: process.env.BOT_COMMANDS_CHANNEL_ID,
   ytdlpPath: process.env.YTDLP_PATH || 'yt-dlp',
   logLevel: process.env.LOG_LEVEL || 'info',
   admin: {
@@ -24,3 +20,13 @@ export const config = {
     adminService: process.env.ADMIN_SERVICE || 'discord-music-bot-admin.service',
   },
 };
+
+export function validateBotConfig() {
+  const required = ['token', 'clientId', 'guildId', 'botCommandsChannelId'];
+  const missing = required.filter((k) => isUnset(config[k]));
+  if (missing.length) {
+    throw new Error(
+      `Missing or unset env vars: ${missing.map(k => k.toUpperCase()).join(', ')}. Edit .env on the server.`,
+    );
+  }
+}

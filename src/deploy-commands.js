@@ -1,5 +1,7 @@
 import { REST, Routes } from 'discord.js';
-import { config } from './config.js';
+import { config, validateBotConfig } from './config.js';
+
+validateBotConfig();
 import { data as play } from './commands/play.js';
 import { data as skip } from './commands/skip.js';
 import { data as queue } from './commands/queue.js';

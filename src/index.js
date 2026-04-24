@@ -1,5 +1,7 @@
 import { Client, GatewayIntentBits, Events, MessageFlags } from 'discord.js';
-import { config } from './config.js';
+import { config, validateBotConfig } from './config.js';
+
+validateBotConfig();
 import { logger } from './logger.js';
 import { shutdownAll } from './music/manager.js';
 import { handleButton } from './interactions/buttons.js';
