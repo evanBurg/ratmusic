@@ -1,11 +1,33 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { EventEmitter } from 'node:events';
+
+// A FakeAudioPlayer behaves like @discordjs/voice's AudioPlayer for our
+// purposes: it's an EventEmitter, holds a state, and `stop(force)` SYNCHRONOUSLY
+// transitions to Idle and emits the Idle event (matching the real lib's
+// synchronous setState behaviour). Several manager bugs depend on this exact
+// re-entrancy, so the mock has to model it.
+class FakeAudioPlayer extends EventEmitter {
+  constructor() {
+    super();
+    this.state = { status: 'idle' };
+    this.play = vi.fn((resource) => {
+      this.state = { status: 'buffering' };
+    });
+    this.stop = vi.fn((_force) => {
+      this.state = { status: 'idle' };
+      this.emit('stateChange', { status: 'playing' }, { status: 'idle' });
+      this.emit('idle');
+    });
+    this.subscribe = vi.fn(() => undefined);
+  }
+}
 
 vi.mock('@discordjs/voice', () => ({
   joinVoiceChannel: vi.fn(),
-  createAudioPlayer: vi.fn(() => ({ on: vi.fn(), play: vi.fn(), stop: vi.fn() })),
+  createAudioPlayer: vi.fn(() => new FakeAudioPlayer()),
   createAudioResource: vi.fn(() => ({})),
-  AudioPlayerStatus: { Idle: 'idle' },
-  VoiceConnectionStatus: { Disconnected: 'disconnected', Signalling: 's', Connecting: 'c', Ready: 'r' },
+  AudioPlayerStatus: { Idle: 'idle', Playing: 'playing', Buffering: 'buffering', Paused: 'paused', AutoPaused: 'autopaused' },
+  VoiceConnectionStatus: { Disconnected: 'disconnected', Signalling: 's', Connecting: 'c', Ready: 'r', Destroyed: 'destroyed' },
   StreamType: { Arbitrary: 'arbitrary' },
   entersState: vi.fn(async () => undefined),
   NoSubscriberBehavior: { Pause: 'pause' },
@@ -20,9 +42,10 @@ vi.mock('../../src/music/resolver.js', () => ({
   })),
 }));
 
-vi.mock('../../src/logger.js', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn(), debug: vi.fn() },
-}));
+vi.mock('../../src/logger.js', async () => {
+  const { fakeLoggerModule } = await import('../helpers/fakeLogger.js');
+  return fakeLoggerModule;
+});
 
 const { getMusic, shutdownAll } = await import('../../src/music/manager.js');
 
@@ -112,6 +135,67 @@ describe('GuildMusic queue operations', () => {
   it('skip returns null when nothing playing and queue empty', () => {
     const m = getMusic('g1');
     expect(m.skip()).toBeNull();
+  });
+
+  // Regression: the AudioPlayer's Idle event fires synchronously from stop(),
+  // so the auto-advance handler runs (and spawns the next track's process)
+  // before skip() returns. If skip() killed currentProc *after* stop(true),
+  // it would clobber the freshly-spawned next track's process — effectively
+  // skipping two tracks at once. See manager.js skip() comment.
+  it('skip does not kill the next track that auto-advance just spawned', async () => {
+    const { spawnAudioStream } = await import('../../src/music/resolver.js');
+    spawnAudioStream.mockClear();
+
+    const procA = { stdout: {}, stderr: { on: vi.fn() }, on: vi.fn(), kill: vi.fn() };
+    const procB = { stdout: {}, stderr: { on: vi.fn() }, on: vi.fn(), kill: vi.fn() };
+    // procA is hand-installed below; procB will come from _advance's spawn.
+    spawnAudioStream.mockReturnValueOnce(procB);
+
+    const m = getMusic('g1');
+    m.ensurePlayer();
+    m.current = track('A', 'Track A');
+    m.currentProc = procA;
+    m.enqueue(track('B', 'Track B'));
+
+    const skipped = m.skip();
+
+    expect(skipped.title).toBe('Track A');
+    expect(procA.kill).toHaveBeenCalledWith('SIGKILL');
+    // The crux of the regression: B's process must SURVIVE skip().
+    expect(procB.kill).not.toHaveBeenCalled();
+    // And we should now be playing B.
+    expect(m.current?.title).toBe('Track B');
+    expect(m.currentProc).toBe(procB);
+    expect(m.queue).toHaveLength(0);
+  });
+
+  // Regression: the slash-command handler posts its own "Now playing: ..."
+  // editReply, so manager._playNext() must not also post a channel notify
+  // when invoked via maybeStart() (the user-command path). It SHOULD notify
+  // when invoked via _advance() (the auto-advance path).
+  it('maybeStart does not double-notify, but auto-advance does notify', async () => {
+    const { spawnAudioStream } = await import('../../src/music/resolver.js');
+    spawnAudioStream.mockReturnValue({ stdout: {}, stderr: { on: vi.fn() }, on: vi.fn(), kill: vi.fn() });
+
+    const send = vi.fn(() => Promise.resolve());
+    const m = getMusic('g1');
+    m.ensurePlayer();
+    m.textChannel = { send };
+    m.enqueue(track('A', 'Track A'));
+
+    await m.maybeStart();
+    expect(m.current?.title).toBe('Track A');
+    expect(send).not.toHaveBeenCalled(); // no duplicate "Now playing"
+
+    // Auto-advance: simulate the Player going Idle (track A finished).
+    m.enqueue(track('B', 'Track B'));
+    m.player.emit('idle'); // triggers _advance() -> _playNext() with default notify=true
+
+    // Wait a microtask for any async handling to settle.
+    await Promise.resolve();
+    expect(m.current?.title).toBe('Track B');
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0].content).toMatch(/Now playing.*Track B/);
   });
 
   it('stopAndLeave clears queue and current', () => {
